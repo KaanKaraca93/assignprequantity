@@ -1,0 +1,19 @@
+{
+  "name": "assignprequantity",
+  "version": "1.0.0",
+  "description": "PLM Style ön adet (MinimumQuantity) atama API'si. STYLE verisini PLM'den çeker, costingDB Ön Adet Parametreleri tablosundan kademeli (L1/L2/L3) adet çözümü yapar ve sonucu PLM'e (STYLECOLORWAYS + STYLE.NumericValue1) yazar.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "axios": "^1.7.7",
+    "express": "^4.21.0"
+  },
+  "author": "Ipekyol",
+  "license": "UNLICENSED"
+}
