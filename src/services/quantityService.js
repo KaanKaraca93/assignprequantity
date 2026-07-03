@@ -71,6 +71,10 @@ async function assignPreQuantity(styleId, opts = {}) {
   const colorways = styleService.getColorways(style);
   const results = [];
 
+  // ION script'iyle birebir: style seviyesinde iki bayrak.
+  let hasValidationError = false; // herhangi bir renkte hesaplanamama/0/eksik boyut
+  let hasChange = false;          // herhangi bir renkte currentQty != newQty
+
   for (const cw of colorways) {
     const styleColorwayId = cw.StyleColorwayId;
     const currentQty = Number(cw.MinimumQuantity || 0);
@@ -78,6 +82,7 @@ async function assignPreQuantity(styleId, opts = {}) {
     const lifestyle = cw.ColorwayUserField4;
     const themePid = (cw.Theme && cw.Theme.Description) || '';
 
+    // Script'te calculated_minimum_qty varsayılan 0'dır.
     const entry = {
       styleColorwayId,
       currentQty,
@@ -85,71 +90,85 @@ async function assignPreQuantity(styleId, opts = {}) {
       lifestyle,
       cluster: '',
       altSezon: '',
-      newQty: null,
+      newQty: 0,
+      changed: false,
       level: null,
       note: null,
       error: null
     };
 
-    // 1) Status kaynaklı sıfırlama
-    if (forcedZero) {
+    if (forcedZero || colorwayStatus !== APP.colorwayStatusActive) {
+      // İptal/sıfırlama: adet 0, ama VALIDASYON HATASI DEĞİL (geçerli sıfırlama).
       entry.newQty = 0;
-      entry.note = `Style.Status=${APP.styleStatusInactive} → adet 0`;
-      results.push(entry);
-      continue;
-    }
-    if (colorwayStatus !== APP.colorwayStatusActive) {
-      entry.newQty = 0;
-      entry.note = `ColorwayStatus=${colorwayStatus} (aktif değil) → adet 0`;
-      results.push(entry);
-      continue;
-    }
-
-    // 2) Tema özniteliklerini (Cluster, Alt_Sezon) çöz
-    try {
-      const theme = await themeService.resolveThemeAttributes(themePid);
-      entry.cluster = theme.cluster;
-      entry.altSezon = theme.altSezon;
-    } catch (err) {
-      entry.error = `Tema öznitelikleri okunamadı (${themePid}): ${err.message}`;
-      results.push(entry);
-      continue;
-    }
-
-    if (!entry.cluster || !entry.altSezon || lifestyle === null || lifestyle === undefined || lifestyle === '') {
-      entry.error = `Eksik boyut — cluster="${entry.cluster}", altSezon="${entry.altSezon}", lifestyle="${lifestyle}"`;
-      results.push(entry);
-      continue;
-    }
-
-    // 3) DB'den kademeli adet çözümü
-    try {
-      const res = await resolveQuantity({ ...base, cluster: entry.cluster, altSezon: entry.altSezon, lifestyle });
-      if (res.adet === null) {
-        entry.error = 'Ön Adet Parametreleri tablosunda eşleşen kayıt bulunamadı (L1/L2/L3).';
-      } else {
-        entry.newQty = res.adet;
-        entry.level = res.level;
-        entry.note = `${res.level} (${res.matchCount} kayıt)`;
+      entry.note = forcedZero
+        ? `Style.Status=${APP.styleStatusInactive} → adet 0`
+        : `ColorwayStatus=${colorwayStatus} (aktif değil) → adet 0`;
+    } else {
+      // Tema özniteliklerini (Cluster, Alt_Sezon) çöz
+      try {
+        const theme = await themeService.resolveThemeAttributes(themePid);
+        entry.cluster = theme.cluster;
+        entry.altSezon = theme.altSezon;
+      } catch (err) {
+        entry.error = `Tema öznitelikleri okunamadı (${themePid}): ${err.message}`;
+        hasValidationError = true;
       }
-    } catch (err) {
-      entry.error = `Parametre sorgusu hatası: ${err.message}`;
+
+      if (!entry.error) {
+        // Validasyon: cluster / altSezon / lifestyle boş mu? (script: cluster/hibrit/lifestyle)
+        if (!entry.cluster || !entry.altSezon || lifestyle === null || lifestyle === undefined || lifestyle === '') {
+          entry.error = `Eksik boyut — cluster="${entry.cluster}", altSezon="${entry.altSezon}", lifestyle="${lifestyle}"`;
+          hasValidationError = true;
+        } else {
+          try {
+            const res = await resolveQuantity({ ...base, cluster: entry.cluster, altSezon: entry.altSezon, lifestyle });
+            // Script kuralı: eşleşme yoksa VEYA hesaplanan adet 0 ise → validasyon hatası.
+            if (res.adet === null || res.adet === 0) {
+              entry.newQty = 0;
+              entry.error = res.adet === null
+                ? 'Ön Adet Parametreleri tablosunda eşleşen kayıt bulunamadı (L1/L2/L3).'
+                : 'Eşleşen adet 0 — validasyon hatası (script kuralı).';
+              hasValidationError = true;
+            } else {
+              entry.newQty = res.adet;
+              entry.level = res.level;
+              entry.note = `${res.level} (${res.matchCount} kayıt)`;
+            }
+          } catch (err) {
+            entry.error = `Parametre sorgusu hatası: ${err.message}`;
+            hasValidationError = true;
+          }
+        }
+      }
     }
+
+    // Değişiklik tespiti (script: input_qty_safe != calculated_minimum_qty)
+    const inputQtySafe = Number.isFinite(currentQty) ? Math.trunc(currentQty) : 0;
+    entry.changed = inputQtySafe !== entry.newQty;
+    if (entry.changed) hasChange = true;
+
     results.push(entry);
   }
 
-  // PATCH gövdesi: yalnızca adedi belirlenebilen colorway'ler
+  // Filter (script): 000 = hata VEYA değişiklik yok → hiç patch yok. 001 = başarılı + değişiklik var.
+  const filter = (hasValidationError || !hasChange) ? '000' : '001';
+  const willPatch = filter === '001';
+
+  // ScriptQty: TÜM renklerin hesaplanan adedinin toplamı (script ile birebir).
+  const scriptQty = results.reduce((acc, r) => acc + Number(r.newQty || 0), 0);
+
+  // PatchColor: yalnızca DEĞİŞEN renkler (currentQty != newQty). Değişmeyen renge
+  // boşuna patch atmıyoruz; PLM'deki son durum yine aynı olur.
   const patchArray = results
-    .filter((r) => r.newQty !== null)
+    .filter((r) => r.changed)
     .map((r) => ({ StyleColorwayId: r.styleColorwayId, MinimumQuantity: r.newQty }));
 
-  const totalQty = patchArray.reduce((acc, p) => acc + Number(p.MinimumQuantity), 0);
   const errors = results.filter((r) => r.error).map((r) => ({ styleColorwayId: r.styleColorwayId, error: r.error }));
 
   let patched = { colorways: 0, styleTotal: false };
-  if (!dryRun && patchArray.length) {
+  if (!dryRun && willPatch && patchArray.length) {
     await styleService.patchColorways(patchArray);
-    await styleService.patchStyleTotal(styleId, totalQty);
+    await styleService.patchStyleTotal(styleId, scriptQty);
     patched = { colorways: patchArray.length, styleTotal: true };
   }
 
@@ -159,7 +178,10 @@ async function assignPreQuantity(styleId, opts = {}) {
     status: style.Status,
     forcedZero,
     dimensions: base,
-    totalQty,
+    filter,
+    hasValidationError,
+    hasChange,
+    totalQty: scriptQty,
     colorways: results,
     errors,
     patched,
