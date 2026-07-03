@@ -5,7 +5,11 @@
  * PLM tenant'ına bağlanır. Stabilleşince environment variable'a taşınacak.
  */
 
-const isProduction = process.env.NODE_ENV === 'production';
+// Varsayılan olarak PRODUCTION (PRD) tenant kullanılır; Heroku'da hiçbir env
+// değişkeni ayarlamaya gerek kalmaz. Test tenant'ına geçmek için PLM_ENV=test
+// (veya NODE_ENV=test) verilebilir.
+const isTest = (process.env.PLM_ENV || process.env.NODE_ENV || '').toLowerCase() === 'test';
+const isProduction = !isTest;
 
 const TEST_CONFIG = {
   tenantId: 'ATJZAMEWEF5P4SNV_TST',
@@ -47,6 +51,6 @@ const PLM_CONFIG = {
   }
 };
 
-console.log(`PLM Config yuklendi: ${isProduction ? 'PRODUCTION' : 'TEST'} (${PLM_CONFIG.tenantId})`);
+console.log(`PLM Config yuklendi: ${isProduction ? 'PRODUCTION' : 'TEST'} (${PLM_CONFIG.tenantId}) [varsayilan: PRD]`);
 
 module.exports = PLM_CONFIG;

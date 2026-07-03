@@ -44,9 +44,12 @@ bağımsız bir servise dönüştürülmüş halidir. Ayrı repo, ayrı Heroku u
 
 ## Ortam değişkenleri
 
+Hiçbiri **zorunlu değildir** — env ayarı yapmadan deploy edebilirsiniz. Tüm
+varsayılanlar (PLM PRD tenant kimlik bilgileri + costingDB prod adresi) koda gömülüdür.
+
 | Değişken | Varsayılan | Açıklama |
 | --- | --- | --- |
-| `NODE_ENV` | — | `production` → PRD tenant, aksi halde TST |
+| `PLM_ENV` | `prd` | `test` verilirse TST tenant; aksi halde **PRD (varsayılan)** |
 | `PORT` | `3099` | HTTP portu (Heroku otomatik atar) |
 | `COSTING_DB_API_URL` | `https://costingdb-8538ae5b78bc.herokuapp.com/api` | Ön Adet Parametreleri REST API kökü |
 
@@ -63,8 +66,8 @@ curl "http://localhost:3099/api/assign-prequantity/15344?dryRun=true"
 
 ```bash
 heroku create <app-adi>
-heroku config:set NODE_ENV=production
 git push heroku main
+# Env ayarı gerekmez; varsayılan PRD tenant ve prod costingDB adresi koda gömülüdür.
 ```
 
 ## Yanıt örneği (dryRun)
