@@ -18,8 +18,10 @@
       "post": {
         "tags": ["Assign Pre-Quantity"],
         "summary": "On adet ata (styleId govdede)",
-        "description": "StyleId govdede gonderilir. dryRun=true ise PLM'e yazilmaz, sadece hesap doner.",
+        "description": "StyleId govdede gonderilir. dryRun true ise PLM'e yazilmaz, sadece hesap doner.",
         "operationId": "assignPreQuantityBody",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
         "parameters": [
           {
             "in": "body",
@@ -32,39 +34,41 @@
           "200": { "description": "Hesap/atama sonucu", "schema": { "$ref": "#/definitions/AssignResult" } },
           "400": { "description": "styleId eksik", "schema": { "$ref": "#/definitions/ErrorResponse" } },
           "404": { "description": "Style bulunamadi", "schema": { "$ref": "#/definitions/ErrorResponse" } },
-          "500": { "description": "Sunucu/PLM hatasi", "schema": { "$ref": "#/definitions/ErrorResponse" } }
+          "500": { "description": "Sunucu veya PLM hatasi", "schema": { "$ref": "#/definitions/ErrorResponse" } }
         }
       }
     },
     "/assign-prequantity/{styleId}": {
       "post": {
         "tags": ["Assign Pre-Quantity"],
-        "summary": "On adet ata (styleId path'te)",
+        "summary": "On adet ata (styleId path uzerinden)",
         "operationId": "assignPreQuantityPathPost",
+        "produces": ["application/json"],
         "parameters": [
-          { "name": "styleId", "in": "path", "required": true, "type": "integer", "description": "PLM StyleId" },
+          { "name": "styleId", "in": "path", "required": true, "type": "integer", "format": "int64", "description": "PLM StyleId" },
           { "name": "dryRun", "in": "query", "required": false, "type": "boolean", "description": "true ise PLM'e yazmaz" }
         ],
         "responses": {
           "200": { "description": "Hesap/atama sonucu", "schema": { "$ref": "#/definitions/AssignResult" } },
           "400": { "description": "styleId eksik", "schema": { "$ref": "#/definitions/ErrorResponse" } },
           "404": { "description": "Style bulunamadi", "schema": { "$ref": "#/definitions/ErrorResponse" } },
-          "500": { "description": "Sunucu/PLM hatasi", "schema": { "$ref": "#/definitions/ErrorResponse" } }
+          "500": { "description": "Sunucu veya PLM hatasi", "schema": { "$ref": "#/definitions/ErrorResponse" } }
         }
       },
       "get": {
         "tags": ["Assign Pre-Quantity"],
-        "summary": "On adet onizleme/atama (styleId path'te)",
+        "summary": "On adet onizleme veya atama (styleId path uzerinden)",
         "operationId": "assignPreQuantityPathGet",
+        "produces": ["application/json"],
         "parameters": [
-          { "name": "styleId", "in": "path", "required": true, "type": "integer", "description": "PLM StyleId" },
+          { "name": "styleId", "in": "path", "required": true, "type": "integer", "format": "int64", "description": "PLM StyleId" },
           { "name": "dryRun", "in": "query", "required": false, "type": "boolean", "description": "true ise PLM'e yazmaz (onizleme)" }
         ],
         "responses": {
           "200": { "description": "Hesap/atama sonucu", "schema": { "$ref": "#/definitions/AssignResult" } },
           "400": { "description": "styleId eksik", "schema": { "$ref": "#/definitions/ErrorResponse" } },
           "404": { "description": "Style bulunamadi", "schema": { "$ref": "#/definitions/ErrorResponse" } },
-          "500": { "description": "Sunucu/PLM hatasi", "schema": { "$ref": "#/definitions/ErrorResponse" } }
+          "500": { "description": "Sunucu veya PLM hatasi", "schema": { "$ref": "#/definitions/ErrorResponse" } }
         }
       }
     }
@@ -74,63 +78,72 @@
       "type": "object",
       "required": ["styleId"],
       "properties": {
-        "styleId": { "type": "integer", "example": 15344, "description": "PLM StyleId" },
-        "dryRun": { "type": "boolean", "example": false, "description": "true ise PLM'e yazmaz, sadece hesap doner" }
+        "styleId": { "type": "integer", "format": "int64", "description": "PLM StyleId" },
+        "dryRun": { "type": "boolean", "description": "true ise PLM'e yazmaz, sadece hesap doner" }
+      }
+    },
+    "Dimensions": {
+      "type": "object",
+      "properties": {
+        "brandId": { "type": "integer" },
+        "divisionId": { "type": "integer" },
+        "subCategoryId": { "type": "integer" },
+        "productSubSubCategoryId": { "type": "integer" },
+        "seasonId": { "type": "integer" }
       }
     },
     "ColorwayResult": {
       "type": "object",
       "properties": {
-        "styleColorwayId": { "type": "integer", "example": 17012 },
-        "currentQty": { "type": "number", "example": 0 },
-        "colorwayStatus": { "type": "integer", "example": 1 },
-        "lifestyle": { "type": "integer", "example": 3 },
-        "cluster": { "type": "string", "example": "013" },
-        "altSezon": { "type": "string", "example": "SS1" },
-        "newQty": { "type": "integer", "example": 120, "description": "Hesaplanan adet (varsayilan 0)" },
-        "changed": { "type": "boolean", "example": true, "description": "currentQty != newQty" },
-        "level": { "type": "string", "example": "L1-alt_kategori", "description": "Eslesme seviyesi (L1/L2/L3)" },
-        "note": { "type": "string", "example": "L1-alt_kategori (1 kayit)" },
-        "error": { "type": "string", "example": "" }
+        "styleColorwayId": { "type": "integer" },
+        "currentQty": { "type": "number" },
+        "colorwayStatus": { "type": "integer" },
+        "lifestyle": { "type": "integer" },
+        "cluster": { "type": "string" },
+        "altSezon": { "type": "string" },
+        "newQty": { "type": "integer", "description": "Hesaplanan adet (varsayilan 0)" },
+        "changed": { "type": "boolean", "description": "currentQty ile newQty farkli mi" },
+        "level": { "type": "string", "description": "Eslesme seviyesi L1 L2 veya L3" },
+        "note": { "type": "string" },
+        "error": { "type": "string" }
+      }
+    },
+    "ColorwayError": {
+      "type": "object",
+      "properties": {
+        "styleColorwayId": { "type": "integer" },
+        "error": { "type": "string" }
+      }
+    },
+    "Patched": {
+      "type": "object",
+      "properties": {
+        "colorways": { "type": "integer" },
+        "styleTotal": { "type": "boolean" }
       }
     },
     "AssignResult": {
       "type": "object",
       "properties": {
-        "styleId": { "type": "integer", "example": 15344 },
-        "styleCode": { "type": "string", "example": "TS1270002196" },
-        "status": { "type": "integer", "example": 2 },
-        "forcedZero": { "type": "boolean", "example": false, "description": "Style.Status=103 ise tum adetler 0" },
-        "filter": { "type": "string", "example": "001", "description": "001 = patch yapildi/yapilacak, 000 = hata veya degisiklik yok (patch atlandi)" },
-        "hasValidationError": { "type": "boolean", "example": false },
-        "hasChange": { "type": "boolean", "example": true },
-        "dimensions": {
-          "type": "object",
-          "properties": {
-            "brandId": { "type": "integer", "example": 8 },
-            "divisionId": { "type": "integer", "example": 6 },
-            "subCategoryId": { "type": "integer", "example": 20 },
-            "productSubSubCategoryId": { "type": "integer", "example": 56 },
-            "seasonId": { "type": "integer", "example": 11 }
-          }
-        },
-        "totalQty": { "type": "integer", "example": 120 },
+        "styleId": { "type": "integer", "format": "int64" },
+        "styleCode": { "type": "string" },
+        "status": { "type": "integer" },
+        "forcedZero": { "type": "boolean", "description": "Style.Status 103 ise tum adetler 0" },
+        "filter": { "type": "string", "description": "001 patch yapildi, 000 hata veya degisiklik yok" },
+        "hasValidationError": { "type": "boolean" },
+        "hasChange": { "type": "boolean" },
+        "dimensions": { "$ref": "#/definitions/Dimensions" },
+        "totalQty": { "type": "integer" },
         "colorways": { "type": "array", "items": { "$ref": "#/definitions/ColorwayResult" } },
-        "errors": { "type": "array", "items": { "type": "object" } },
-        "patched": {
-          "type": "object",
-          "properties": {
-            "colorways": { "type": "integer", "example": 1 },
-            "styleTotal": { "type": "boolean", "example": true }
-          }
-        },
-        "dryRun": { "type": "boolean", "example": false }
+        "errors": { "type": "array", "items": { "$ref": "#/definitions/ColorwayError" } },
+        "patched": { "$ref": "#/definitions/Patched" },
+        "dryRun": { "type": "boolean" }
       }
     },
     "ErrorResponse": {
       "type": "object",
       "properties": {
-        "error": { "type": "string", "example": "styleId zorunludur (path, query veya body)." }
+        "error": { "type": "string" }
       }
     }
   }
