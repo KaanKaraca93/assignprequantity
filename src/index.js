@@ -17,9 +17,13 @@ app.get('/', (req, res) => {
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
+// Route'lar hem /api altında hem de kökte yayınlanır; böylece ION API yolu /api
+// ile ya da onsuz iletse de (ör. /api/assign-prequantity veya /assign-prequantity)
+// istek çalışır.
 app.use('/api', assignRoutes);
+app.use('/', assignRoutes);
 
-app.use((req, res) => res.status(404).json({ error: 'Not found' }));
+app.use((req, res) => res.status(404).json({ error: 'Not found', hint: 'Kullanim: /api/assign-prequantity/{styleId} veya /assign-prequantity/{styleId}' }));
 
 const PORT = process.env.PORT || 3099;
 app.listen(PORT, () => {
