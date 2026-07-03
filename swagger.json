@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "description": "PLM Style on adet (MinimumQuantity) atama servisi. Bir StyleId alir; PLM STYLE + StyleColorways verisini ceker, IDM temasindan Cluster/Alt_Sezon okur, costingDB On Adet Parametreleri tablosundan kademeli (L1/L2/L3) adet cozer ve sonucu PLM STYLECOLORWAYS + STYLE.NumericValue1 alanlarina yazar."
   },
-  "host": "REPLACE-WITH-YOUR-HEROKU-HOST.herokuapp.com",
+  "host": "assignprequant-243c26425a65.herokuapp.com",
   "basePath": "/api",
   "schemes": ["https"],
   "consumes": ["application/json"],
